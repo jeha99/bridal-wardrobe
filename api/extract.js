@@ -1,4 +1,3 @@
-js
 // Vercel Serverless Function — extracts product data from any URL
 // No API keys, no LLM, no token usage. Pure HTML parsing.
 
