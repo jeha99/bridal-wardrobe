@@ -1,8 +1,4 @@
-// Vercel Serverless Function — extracts product data from any URL
-// No API keys, no LLM, no token usage. Pure HTML parsing.
-
 export default async function handler(req, res) {
-  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -23,7 +19,7 @@ export default async function handler(req, res) {
     });
 
     if (!response.ok) {
-      return res.status(502).json({ error: `Site returned ${response.status}` });
+      return res.status(502).json({ error: 'Site returned ' + response.status });
     }
 
     const html = await response.text();
@@ -34,32 +30,32 @@ export default async function handler(req, res) {
     return res.status(502).json({
       error: err.name === 'TimeoutError'
         ? 'Site took too long to respond'
-        : `Fetch failed: ${err.message}`
+        : 'Fetch failed: ' + err.message
     });
   }
 }
 
 function parseProduct(html, pageUrl) {
-  let name = null, vendor = null, price = null, currency = null, imageUrl = null;
+  var name = null, vendor = null, price = null, currency = null, imageUrl = null;
 
-  // 1. JSON-LD structured data (most reliable)
-  const jsonLdRegex = /]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
-  let ldMatch;
+  var jsonLdRegex = /<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  var ldMatch;
   while ((ldMatch = jsonLdRegex.exec(html)) !== null) {
     try {
-      const raw = JSON.parse(ldMatch[1]);
-      const items = Array.isArray(raw) ? raw : (raw['@graph'] || [raw]);
-      for (const item of items) {
+      var raw = JSON.parse(ldMatch[1]);
+      var items = Array.isArray(raw) ? raw : (raw['@graph'] || [raw]);
+      for (var i = 0; i < items.length; i++) {
+        var item = items[i];
         if (!item || !item['@type']) continue;
-        const types = Array.isArray(item['@type']) ? item['@type'] : [item['@type']];
-        if (!types.includes('Product')) continue;
+        var types = Array.isArray(item['@type']) ? item['@type'] : [item['@type']];
+        if (types.indexOf('Product') === -1) continue;
 
         if (!name && item.name) name = item.name.trim();
 
         if (!imageUrl && item.image) {
-          const img = item.image;
+          var img = item.image;
           if (typeof img === 'string') imageUrl = img;
-          else if (Array.isArray(img)) imageUrl = typeof img[0] === 'string' ? img[0] : img[0]?.url;
+          else if (Array.isArray(img)) imageUrl = typeof img[0] === 'string' ? img[0] : (img[0] && img[0].url);
           else if (img.url) imageUrl = img.url;
         }
 
@@ -67,50 +63,47 @@ function parseProduct(html, pageUrl) {
           vendor = typeof item.brand === 'string' ? item.brand : item.brand.name;
         }
 
-        const offers = Array.isArray(item.offers) ? item.offers[0] : item.offers;
+        var offers = Array.isArray(item.offers) ? item.offers[0] : item.offers;
         if (offers) {
           if (price == null && offers.price != null) price = parseFloat(offers.price);
           if (!currency && offers.priceCurrency) currency = offers.priceCurrency;
-          // Shopify sometimes nests under offers.offers
           if (price == null && offers.offers) {
-            const inner = Array.isArray(offers.offers) ? offers.offers[0] : offers.offers;
-            if (inner?.price != null) price = parseFloat(inner.price);
-            if (!currency && inner?.priceCurrency) currency = inner.priceCurrency;
+            var inner = Array.isArray(offers.offers) ? offers.offers[0] : offers.offers;
+            if (inner && inner.price != null) price = parseFloat(inner.price);
+            if (!currency && inner && inner.priceCurrency) currency = inner.priceCurrency;
           }
         }
       }
-    } catch (e) { /* ignore bad JSON-LD */ }
+    } catch (e) {}
   }
 
-  // 2. Meta tag fallbacks
-  const meta = (prop) => {
-    const re = new RegExp(`]*(?:property|name)\\s*=\\s*["']${prop}["'][^>]*content\\s*=\\s*["']([^"']*)["']`, 'i');
-    const alt = new RegExp(`]*content\\s*=\\s*["']([^"']*)["'][^>]*(?:property|name)\\s*=\\s*["']${prop}["']`, 'i');
-    const m = html.match(re) || html.match(alt);
+  var metaGet = function(prop) {
+    var re = new RegExp('<meta[^>]*(?:property|name)\\s*=\\s*["\']' + prop + '["\'][^>]*content\\s*=\\s*["\']([^"\']*)["\']', 'i');
+    var alt = new RegExp('<meta[^>]*content\\s*=\\s*["\']([^"\']*)["\'][^>]*(?:property|name)\\s*=\\s*["\']' + prop + '["\']', 'i');
+    var m = html.match(re) || html.match(alt);
     return m ? m[1].trim() : null;
   };
 
   if (!name) {
-    const t = meta('og:title');
+    var t = metaGet('og:title');
     if (t) name = t.split(/\s*[–|—|•]\s*/)[0].trim();
   }
   if (!name) {
-    const titleMatch = html.match(/]*>([^<]+)<\/title>/i);
+    var titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     if (titleMatch) name = titleMatch[1].split(/\s*[–|—|•]\s*/)[0].trim();
   }
-  if (!imageUrl) imageUrl = meta('og:image') || meta('og:image:secure_url') || meta('twitter:image');
-  if (!vendor) vendor = meta('og:site_name') || meta('product:brand');
+  if (!imageUrl) imageUrl = metaGet('og:image') || metaGet('og:image:secure_url') || metaGet('twitter:image');
+  if (!vendor) vendor = metaGet('og:site_name') || metaGet('product:brand');
   if (!price) {
-    const p = meta('product:price:amount') || meta('og:price:amount');
+    var p = metaGet('product:price:amount') || metaGet('og:price:amount');
     if (p) price = parseFloat(p.replace(/,/g, ''));
   }
-  if (!currency) currency = meta('product:price:currency') || meta('og:price:currency');
+  if (!currency) currency = metaGet('product:price:currency') || metaGet('og:price:currency');
 
-  // 3. Regex price fallback
   if (price == null) {
-    const bodyMatch = html.match(/<body[\s\S]*<\/body>/i);
-    const bodyText = bodyMatch ? bodyMatch[0].replace(/]+>/g, ' ').slice(0, 30000) : '';
-    const patterns = [
+    var bodyMatch = html.match(/<body[\s\S]*<\/body>/i);
+    var bodyText = bodyMatch ? bodyMatch[0].replace(/<[^>]+>/g, ' ').slice(0, 30000) : '';
+    var patterns = [
       { re: /₹\s*([\d,]+(?:\.\d+)?)/, curr: 'INR' },
       { re: /Rs\.?\s*([\d,]+(?:\.\d+)?)/i, curr: 'INR' },
       { re: /US\$\s*([\d,]+(?:\.\d+)?)/i, curr: 'USD' },
@@ -118,33 +111,30 @@ function parseProduct(html, pageUrl) {
       { re: /£\s*([\d,]+(?:\.\d+)?)/, curr: 'GBP' },
       { re: /€\s*([\d,]+(?:\.\d+)?)/, curr: 'EUR' }
     ];
-    for (const { re, curr } of patterns) {
-      const m = bodyText.match(re);
+    for (var j = 0; j < patterns.length; j++) {
+      var m = bodyText.match(patterns[j].re);
       if (m) {
-        const n = parseFloat(m[1].replace(/,/g, ''));
+        var n = parseFloat(m[1].replace(/,/g, ''));
         if (!isNaN(n) && n > 10) {
           price = n;
-          if (!currency) currency = curr;
+          if (!currency) currency = patterns[j].curr;
           break;
         }
       }
     }
   }
 
-  // Normalize image URL
   if (imageUrl) {
-    if (imageUrl.startsWith('//')) imageUrl = 'https:' + imageUrl;
-    else if (imageUrl.startsWith('/')) {
+    if (imageUrl.indexOf('//') === 0) imageUrl = 'https:' + imageUrl;
+    else if (imageUrl.indexOf('/') === 0) {
       try { imageUrl = new URL(pageUrl).origin + imageUrl; } catch (e) {}
     }
-    // Shopify: upgrade thumbnails
     imageUrl = imageUrl.replace(/_(?:100|160|200|240|360|480|540)x/g, '_1024x');
   }
 
-  // Derive vendor from hostname as last resort
   if (!vendor) {
     try {
-      const h = new URL(pageUrl).hostname.replace(/^www\./, '').split('.')[0];
+      var h = new URL(pageUrl).hostname.replace(/^www\./, '').split('.')[0];
       vendor = h.charAt(0).toUpperCase() + h.slice(1);
     } catch (e) {}
   }
