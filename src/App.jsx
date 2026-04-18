@@ -402,4 +402,67 @@ function OutfitModal(props) {
             {props.onRetry && <button onClick={props.onRetry} disabled={o._retrying} className="text-xs text-rose-800 underline underline-offset-2 ml-6 flex items-center gap-1">{o._retrying ? <><Loader2 className="w-3 h-3 animate-spin" /> Retrying…</> : 'Try again'}</button>}
             <div className="text-xs text-rose-700 ml-6 mt-1">You can also fill in the fields manually.</div>
           </div>}
-          {props.isNew && !o.extractionError && missing.length > 0 && <div className="mb-5 bg
+          {props.isNew && !o.extractionError && missing.length > 0 && <div className="mb-5 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2"><AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" /><div className="text-sm text-amber-900"><span className="font-medium">Couldn't auto-detect:</span> {missing.join(', ')}.</div></div>}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <div className="aspect-[3/4] rounded-xl bg-rose-50 overflow-hidden mb-3"><Img key={imgKey} src={o.imageUrl} alt="outfit" className="w-full h-full object-cover" /></div>
+              <Field label="Image URL" miss={st.imageUrl === 'missing' && !o.imageUrl}>
+                <input type="url" value={o.imageUrl} onChange={function(e) { props.onChange(Object.assign({}, o, { imageUrl: e.target.value })); setImgKey(function(k) { return k + 1; }); }} placeholder="https://..." className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none" />
+              </Field>
+              <p className="text-xs text-stone-400 mt-1">Right-click the photo on the vendor site → "Copy Image Address" → paste above.</p>
+            </div>
+            <div className="space-y-4">
+              <Field label="Outfit name" miss={st.name === 'missing' && !o.name}><input type="text" value={o.name} onChange={function(e) { props.onChange(Object.assign({}, o, { name: e.target.value })); }} placeholder="e.g. Rose Gold Lehenga Set" className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none" /></Field>
+              <Field label="Vendor / Designer" miss={st.vendor === 'missing' && !o.vendor}><input type="text" value={o.vendor} onChange={function(e) { props.onChange(Object.assign({}, o, { vendor: e.target.value })); }} placeholder="e.g. Seema Gujral" className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none" /></Field>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2"><Field label="Price" miss={st.price === 'missing' && !o.price}><input type="text" value={o.price} onChange={function(e) { props.onChange(Object.assign({}, o, { price: e.target.value.replace(/[^0-9.]/g, '') })); }} placeholder="0" className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none" /></Field></div>
+                <Field label="Currency"><select value={o.currency} onChange={function(e) { props.onChange(Object.assign({}, o, { currency: e.target.value })); }} className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none bg-white">{CURRENCIES.map(function(c) { return <option key={c} value={c}>{c}</option>; })}</select></Field>
+              </div>
+              <Field label="Color">
+                <input type="text" value={o.color} onChange={function(e) { props.onChange(Object.assign({}, o, { color: e.target.value })); }} placeholder="e.g. Red & Gold" className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none" />
+                <div className="flex flex-wrap gap-1 mt-2">{SUGGESTED_COLORS.slice(0, 8).map(function(c) { return <button key={c} type="button" onClick={function() { props.onChange(Object.assign({}, o, { color: c })); }} className="text-xs px-2 py-0.5 rounded-full bg-stone-100 hover:bg-rose-50 text-stone-600 hover:text-rose-900">{c}</button>; })}</div>
+              </Field>
+              <Field label="Events">
+                <div className="flex flex-wrap gap-2 mb-2">{props.events.map(function(t) {
+                  var sel = o.events.indexOf(t) !== -1;
+                  return <button key={t} type="button" onClick={function() { toggleEv(t); }} className={'px-3 py-1.5 rounded-full text-sm flex items-center gap-1 ' + (sel ? 'bg-rose-900 text-white shadow-sm' : 'bg-rose-50 text-rose-900 border border-rose-100 hover:bg-rose-100')}>{sel && <Check className="w-3 h-3" />}{t}</button>;
+                })}</div>
+                <div className="flex gap-2"><input type="text" value={newTag} onChange={function(e) { setNewTag(e.target.value); }} onKeyDown={function(e) { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }} placeholder="Add custom event" className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-stone-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none" /><button type="button" onClick={addTag} disabled={!newTag.trim()} className="px-3 py-1.5 text-sm rounded-lg bg-rose-100 text-rose-900 hover:bg-rose-200 disabled:opacity-40">Add</button></div>
+              </Field>
+              <Field label="Notes (optional)"><textarea value={o.notes} onChange={function(e) { props.onChange(Object.assign({}, o, { notes: e.target.value })); }} placeholder="Fitting notes, accessories…" rows={2} className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none resize-none" /></Field>
+              <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={!!o.favorite} onChange={function(e) { props.onChange(Object.assign({}, o, { favorite: e.target.checked })); }} className="w-4 h-4 rounded accent-amber-500" /><span className="text-sm text-stone-700 flex items-center gap-1"><Star className={'w-4 h-4 ' + (o.favorite ? 'fill-amber-400 text-amber-500' : 'text-stone-400')} />Mark as favorite</span></label>
+              {o.url && <a href={o.url} target="_blank" rel="noopener noreferrer" className="text-xs text-stone-500 hover:text-rose-800 flex items-center gap-1"><ExternalLink className="w-3 h-3" /> View original page</a>}
+            </div>
+          </div>
+        </div>
+        <div className="px-6 py-4 border-t border-stone-100 flex justify-end gap-2 flex-shrink-0 bg-stone-50 rounded-b-2xl">
+          <button onClick={props.onCancel} className="px-4 py-2 rounded-lg text-stone-700 hover:bg-stone-200">Cancel</button>
+          <button onClick={props.onSave} className="px-5 py-2 rounded-lg bg-gradient-to-br from-rose-900 to-rose-800 hover:from-rose-800 hover:to-rose-700 text-white font-medium flex items-center gap-2 shadow-sm">{props.isNew && <Plus className="w-4 h-4" />}{props.saveLabel}</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function TagMgr(props) {
+  var _cur = useState(props.tags.slice());
+  var cur = _cur[0], setCur = _cur[1];
+  var _inp = useState('');
+  var inp = _inp[0], setInp = _inp[1];
+  var add = function() { var t = inp.trim(); if (!t || cur.indexOf(t) !== -1) return; setCur(cur.concat([t])); setInp(''); };
+  return <Modal onClose={props.onCancel}><div className="p-6">
+    <div className="flex items-center justify-between mb-4"><h2 className="font-serif text-xl text-rose-950 flex items-center gap-2"><TagIcon className="w-5 h-5" />Manage Events</h2><button onClick={props.onCancel} className="w-8 h-8 rounded-full hover:bg-stone-100 flex items-center justify-center"><X className="w-4 h-4 text-stone-600" /></button></div>
+    <div className="flex flex-wrap gap-2 mb-4">{cur.map(function(t) { return <span key={t} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-rose-50 text-rose-900 border border-rose-100 text-sm">{t}<button onClick={function() { setCur(cur.filter(function(x) { return x !== t; })); }} className="hover:text-rose-700"><X className="w-3 h-3" /></button></span>; })}{!cur.length && <span className="text-sm text-stone-400 italic">No events.</span>}</div>
+    <div className="flex gap-2 mb-6"><input type="text" value={inp} onChange={function(e) { setInp(e.target.value); }} onKeyDown={function(e) { if (e.key === 'Enter') { e.preventDefault(); add(); } }} placeholder="New event name" className="flex-1 px-3 py-2 rounded-lg border border-stone-200 focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none" /><button onClick={add} disabled={!inp.trim()} className="px-4 py-2 rounded-lg bg-rose-100 text-rose-900 hover:bg-rose-200 disabled:opacity-40">Add</button></div>
+    <div className="flex justify-end gap-2"><button onClick={props.onCancel} className="px-4 py-2 rounded-lg text-stone-700 hover:bg-stone-100">Cancel</button><button onClick={function() { props.onSave(cur); }} className="px-4 py-2 rounded-lg bg-rose-900 hover:bg-rose-800 text-white">Save</button></div>
+  </div></Modal>;
+}
+
+function Field(props) {
+  return <div><label className="text-xs text-stone-500 uppercase tracking-wider font-medium block mb-1 flex items-center gap-1.5">{props.label}{props.miss && <MissingBadge />}</label>{props.children}</div>;
+}
+
+function Modal(props) {
+  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900 bg-opacity-40 backdrop-blur-sm" onClick={props.onClose}><div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[92vh] overflow-hidden" onClick={function(e) { e.stopPropagation(); }}>{props.children}</div></div>;
+}
