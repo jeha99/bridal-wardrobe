@@ -1,4 +1,3 @@
-jsx
 import React, { useState, useEffect } from 'react';
 import {
   Plus, X, Edit2, Trash2, ExternalLink, Loader2, ShoppingBag, Sparkles,
